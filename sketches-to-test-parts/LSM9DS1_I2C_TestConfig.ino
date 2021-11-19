@@ -68,10 +68,10 @@ LSM9DS1 imu2;
 // Example I2C Setup //
 ///////////////////////
 // SDO_XM and SDO_G are both pulled high, so our addresses are:
- #define LSM9DS1_M	0x1E // Would be 0x1C if SDO_M is LOW
- #define LSM9DS1_AG	0x6B // Would be 0x6A if SDO_AG is LOW
- #define LSM9DS1_M1	0x1C // Would be 0x1C if SDO_M is LOW
- #define LSM9DS1_AG2	0x6A // Would be 0x6A if SDO_AG is LOW
+// #define LSM9DS1_M	0x1E // Would be 0x1C if SDO_M is LOW
+// #define LSM9DS1_AG	0x6B // Would be 0x6A if SDO_AG is LOW
+// #define LSM9DS1_M1	0x1C // Would be 0x1C if SDO_M is LOW
+// #define LSM9DS1_AG2	0x6A // Would be 0x6A if SDO_AG is LOW
 ////////////////////////////
 // Sketch Output Settings //
 ////////////////////////////
@@ -97,9 +97,19 @@ void setup()
   Serial.begin(115200);
 
   Wire.begin();
-  if (imu.begin() == false  || imu2.begin(LSM9DS1_M1, LSM9DS1_AG2, Wire)) // with no arguments, this uses default addresses (AG:0x6B, M:0x1E) and i2c port (Wire).
+  if (imu.begin() == false) // with no arguments, this uses default addresses (AG:0x6B, M:0x1E) and i2c port (Wire).
   {
     Serial.println("Failed to communicate with LSM9DS1.");
+    Serial.println("Double-check wiring.");
+    Serial.println("Default settings in this sketch will " \
+                   "work for an out of the box LSM9DS1 " \
+                   "Breakout, but may need to be modified " \
+                   "if the board jumpers are.");
+    while (1);
+  }
+if (imu2.begin(LSM9DS1_AG_ADDR(0), LSM9DS1_M_ADDR(0)) == false) // with no arguments, this uses default addresses (AG:0x6B, M:0x1E) and i2c port (Wire).
+  {
+    Serial.println("Failed to communicate with LSM9DS1 2.");
     Serial.println("Double-check wiring.");
     Serial.println("Default settings in this sketch will " \
                    "work for an out of the box LSM9DS1 " \
@@ -167,8 +177,8 @@ void loop()
     printAttitude(imu.ax, imu.ay, imu.az,
                   -imu.my, -imu.mx, imu.mz);
     lastPrint = millis(); // Update lastPrint time
-
     Serial.println();
+    
     printGyro();  // Print "G: gx, gy, gz"
     printAccel(); // Print "A: ax, ay, az"
     printMag();   // Print "M: mx, my, mz"
@@ -184,23 +194,27 @@ void printGyro()
 {
   // Now we can use the gx, gy, and gz variables as we please.
   // Either print them as raw ADC values, or calculated in DPS.
-  Serial.print("G: ");
+  Serial.println("G1: ");
 #ifdef PRINT_CALCULATED
   // If you want to print calculated values, you can use the
   // calcGyro helper function to convert a raw ADC value to
   // DPS. Give the function the value that you want to convert.
+  Serial.print("gx1:");
   Serial.print(imu.calcGyro(imu.gx), 2);
-  Serial.print(", ");
+  Serial.print(" gy1:");
   Serial.print(imu.calcGyro(imu.gy), 2);
-  Serial.print(", ");
-  Serial.print(imu.calcGyro(imu.gz), 2);
-  Serial.println(" deg/s");
+  Serial.print(" gz1:");
+  Serial.println(imu.calcGyro(imu.gz), 2);
+//  Serial.println(" deg/s");
+  
+  Serial.println("G2: ");
+  Serial.print("gx2:");
   Serial.print(imu2.calcGyro(imu2.gx), 2);
-  Serial.print(", ");
+  Serial.print(" gy2:");
   Serial.print(imu2.calcGyro(imu2.gy), 2);
-  Serial.print(", ");
-  Serial.print(imu2.calcGyro(imu2.gz), 2);
-  Serial.println(" deg/s");
+  Serial.print(" gz2:");
+  Serial.println(imu2.calcGyro(imu2.gz), 2);
+//  Serial.println(" deg/s");
 #elif defined PRINT_RAW
   Serial.print(imu.gx);
   Serial.print(", ");
@@ -219,23 +233,27 @@ void printAccel()
 {
   // Now we can use the ax, ay, and az variables as we please.
   // Either print them as raw ADC values, or calculated in g's.
-  Serial.print("A: ");
+  Serial.println("A1: ");
 #ifdef PRINT_CALCULATED
   // If you want to print calculated values, you can use the
   // calcAccel helper function to convert a raw ADC value to
   // g's. Give the function the value that you want to convert.
+  Serial.print("ax1:");
   Serial.print(imu.calcAccel(imu.ax), 2);
-  Serial.print(", ");
+  Serial.print(" ay1:");
   Serial.print(imu.calcAccel(imu.ay), 2);
-  Serial.print(", ");
-  Serial.print(imu.calcAccel(imu.az), 2);
-  Serial.println(" g");
+  Serial.print(" az1:");
+  Serial.println(imu.calcAccel(imu.az), 2);
+//  Serial.println(" g");
+  
+  Serial.println("A2: ");
+  Serial.print("ax2:");
   Serial.print(imu2.calcAccel(imu2.ax), 2);
-  Serial.print(", ");
+  Serial.print(" ay2:");
   Serial.print(imu2.calcAccel(imu2.ay), 2);
-  Serial.print(", ");
-  Serial.print(imu2.calcAccel(imu2.az), 2);
-  Serial.println(" g");
+  Serial.print(" az2:");
+  Serial.println(imu2.calcAccel(imu2.az), 2);
+//  Serial.println(" g");
 #elif defined PRINT_RAW
   Serial.print(imu.ax);
   Serial.print(", ");
@@ -255,23 +273,27 @@ void printMag()
 {
   // Now we can use the mx, my, and mz variables as we please.
   // Either print them as raw ADC values, or calculated in Gauss.
-  Serial.print("M: ");
+  Serial.println("M1: ");
 #ifdef PRINT_CALCULATED
   // If you want to print calculated values, you can use the
   // calcMag helper function to convert a raw ADC value to
   // Gauss. Give the function the value that you want to convert.
+  Serial.print("mx1:");
   Serial.print(imu.calcMag(imu.mx), 2);
-  Serial.print(", ");
+  Serial.print(" my1:");
   Serial.print(imu.calcMag(imu.my), 2);
-  Serial.print(", ");
-  Serial.print(imu.calcMag(imu.mz), 2);
-  Serial.println(" gauss");
+  Serial.print(" mz1:");
+  Serial.println(imu.calcMag(imu.mz), 2);
+//  Serial.println(" gauss");
+
+  Serial.println("M2: ");
+  Serial.print("mx2:");
   Serial.print(imu2.calcMag(imu2.mx), 2);
-  Serial.print(", ");
+  Serial.print(" my2:");
   Serial.print(imu2.calcMag(imu2.my), 2);
-  Serial.print(", ");
-  Serial.print(imu2.calcMag(imu2.mz), 2);
-  Serial.println(" gauss");
+  Serial.print(" mz2:");
+  Serial.println(imu2.calcMag(imu2.mz), 2);
+//  Serial.println(" gauss");
 #elif defined PRINT_RAW
   Serial.print(imu.mx);
   Serial.print(", ");
@@ -312,9 +334,9 @@ void printAttitude(float ax, float ay, float az, float mx, float my, float mz)
   pitch *= 180.0 / PI;
   roll  *= 180.0 / PI;
 
-  Serial.print("Pitch, Roll: ");
-  Serial.print(pitch, 2);
-  Serial.print(", ");
-  Serial.println(roll, 2);
-  Serial.print("Heading: "); Serial.println(heading, 2);
+//  Serial.print("Pitch, Roll: ");
+//  Serial.print(pitch, 2);
+//  Serial.print(", ");
+//  Serial.println(roll, 2);
+//  Serial.print("Heading: "); Serial.println(heading, 2);
 }
