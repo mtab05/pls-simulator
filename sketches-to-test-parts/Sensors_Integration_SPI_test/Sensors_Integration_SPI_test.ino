@@ -59,7 +59,7 @@ Distributed as-is; no warranty is given.
 #include <SPI.h>
 #include <avr/pgmspace.h>
 #include "PMW3389.h"
-#include <SparkFunLSM9DS1.h>
+#include "SparkFunLSM9DS1.h"
 
 //////////////////////////
 // Library Init //
@@ -67,7 +67,7 @@ Distributed as-is; no warranty is given.
 // Use the LSM9DS1 class to create an object. [imu] can be
 // named anything, we'll refer to that throught the sketch.
 LSM9DS1 imu1, imu2;
-PMW3389 mouse1(30), mouse2(32);
+PMW3389 mouse1(22), mouse2(47);
 
 ///////////////////////
 // IMU SPI Setup     //

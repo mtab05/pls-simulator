@@ -1,0 +1,4 @@
+Sensors Integration prototyped and tested
+- 2x LSM9DS1 imu
+- 2x PMW3389 optical sensors
+- Communication protocol: SPI
