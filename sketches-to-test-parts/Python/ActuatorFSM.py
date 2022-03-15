@@ -81,15 +81,15 @@ def actuatorFSM(trans,pitch,yaw,roll,right):
 def triggerSR(sr,sign,lr):
     match sr:
         case 'w':
-            ser.write(("w:"+str(sign)+str(lr)+"\n").encode())
+            ser.write(("w"+str(sign)+str(lr)+":\n").encode())
         case 's':
-            ser.write(("s:"+str(sign)+str(lr)+"\n").encode())
+            ser.write(("s"+str(sign)+str(lr)+":\n").encode())
         case 'p':
-            ser.write(("p:"+str(sign)+str(lr)+"\n").encode())
+            ser.write(("p"+str(sign)+str(lr)+":\n").encode())
         case 'y':
-            ser.write(("y:"+str(sign)+str(lr)+"\n").encode())
+            ser.write(("y"+str(sign)+str(lr)+":\n").encode())
         case 'r':
-            ser.write(("r:"+str(sign)+str(lr)+"\n").encode())
+            ser.write(("r"+str(sign)+str(lr)+":\n").encode())
 
 stater = [0,0,0,0,0]
 statel = [0,0,0,0,0]
