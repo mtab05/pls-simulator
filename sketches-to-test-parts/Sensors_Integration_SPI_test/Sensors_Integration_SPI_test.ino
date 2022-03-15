@@ -98,7 +98,7 @@ PMW3389 mouse1(22), mouse2(47);
 ////////////////////////////
 #define PRINT_CALCULATED
 //#define PRINT_RAW
-#define PRINT_SPEED 50 // 250 ms between prints
+#define PRINT_SPEED 250 // 250 ms between prints
 
 //Variables for mouse sensors
 byte initComplete=0;

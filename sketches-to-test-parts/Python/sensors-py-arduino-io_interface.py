@@ -44,7 +44,9 @@ while True:
         line = rl.readline().decode()
         data = line.strip('\r\n').split(", ")
         print(data)
+        #sensor data processing
         ser.write("ma\r".encode())
     except KeyboardInterrupt:
+        ser.write("no\r".encode())
         ser.close()
-        print("ctrl-c quit")
+        print("quit")

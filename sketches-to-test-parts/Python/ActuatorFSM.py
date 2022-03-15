@@ -1,24 +1,39 @@
 # from multiprocessing.connection import wait
-from numpy import mean
+import numpy as np
 import serial
-import time
-      
-def windowData(line,right=0):
-    win_trans = win_pitch = win_yaw = win_roll = []
-    for i in range(0,4,len(line)):
-        win_trans[i] = line[i]
-        win_pitch[i] = line[i+1]
-        win_yaw[i] = line[i+2]
-        win_roll[i] = line[i+3]
-    return [win_trans,win_pitch,win_yaw,win_roll,right]
+
+
+def windowData():
+    win_trans_r = win_pitch_r = win_yaw_r = win_roll_r = win_trans_l = win_pitch_l = win_yaw_l = win_roll_l = []
+    i = 0
+    while i < 3:
+        data = rl.readline().decode()
+        line = data.strip('\r\n').split(", ")
+        print(line)
+        if len(line) > 20:
+            win_trans_r.append(float(line[17]))
+            print(win_trans_r)
+            win_pitch_r.append(float(line[1]))
+            win_yaw_r.append(float(line[2]))
+            win_roll_r.append(float(line[16]))
+            win_trans_l.append(float(line[20]))
+            win_pitch_l.append(float(line[4]))
+            win_yaw_l.append(float(line[5]))
+            win_roll_l.append(float(line[19]))
+            i = i + 1
+    return [win_trans_r, win_pitch_r, win_yaw_r, win_roll_r, win_trans_l, win_pitch_l, win_yaw_l, win_roll_l]
+
 
 def getDir(win):
-    if(win[-1]-win[0]  < 0):
+    print(win)
+    if win[-1] - win[0] < 0:
         return 1
     else:
         return 0
 
-def actuatorFSM(trans,pitch,yaw,roll,right):
+
+def actuatorFSM(trans, pitch, yaw, roll, right):
+    pbound = tbound = rbound = ybound = 1
     if right == 1:
         global stater
         state = stater
@@ -29,7 +44,7 @@ def actuatorFSM(trans,pitch,yaw,roll,right):
     psign = getDir(pitch)
     ysign = getDir(yaw)
     rsign = getDir(roll)
-    if mean(trans) > tbound:
+    if np.mean(trans) > tbound:
         state[0] = state[0] + 1
         if state[0] == 4:
             if state[1] == 4:
@@ -39,60 +54,73 @@ def actuatorFSM(trans,pitch,yaw,roll,right):
             if state[3] == 4:
                 state[3] = state[3] - 1
     else:
-            state[0] = state[0] - 1
-            if mean(pitch) > pbound or mean(yaw) > ybound:
-                if mean(pitch) > pbound:
-                    state[1] = state[1] + 1
-                    if state[1] == 4:
-                        if state[2] == 4:
-                            state[2] = state[2] - 1
-                        if state[2] == 4:
-                            state[3] = state[3] - 1
-                else:
-                    state[1] = state[1] - 1
-                if mean(yaw) > ybound:
-                    state[2] = state[2] + 1
+        state[0] = state[0] - 1
+        if np.mean(pitch) > pbound or np.mean(yaw) > ybound:
+            if np.mean(pitch) > pbound:
+                state[1] = state[1] + 1
+                if state[1] == 4:
                     if state[2] == 4:
-                        if state[3] == 4:
-                            state[3] = state[3] - 1
-                else:
-                    state[2] = state[2] - 1
-            else: 
-                if mean(roll) > rbound:
-                    state[3] = state[3] + 1
-                else:
-                    state[3] = state[3] - 1
+                        state[2] = state[2] - 1
+                    if state[2] == 4:
+                        state[3] = state[3] - 1
+            else:
+                state[1] = state[1] - 1
+            if np.mean(yaw) > ybound:
+                state[2] = state[2] + 1
+                if state[2] == 4:
+                    if state[3] == 4:
+                        state[3] = state[3] - 1
+            else:
+                state[2] = state[2] - 1
+        else:
+            if np.mean(roll) > rbound:
+                state[3] = state[3] + 1
+            else:
+                state[3] = state[3] - 1
+    try:
+        sr = state.index(4)
+    except:
+        print('All good!')
+        print(state)
+    else:
+        if sr == 0:
+            state[0] = state[0] - 1
+            triggerSR('w', tsign, right)
+        elif sr == 1:
+            state[1] = state[1] - 1
+            triggerSR('p', psign, right)
+        elif sr == 2:
+            state[2] = state[2] - 1
+            triggerSR('y', ysign, right)
+        elif sr == 3:
+            state[3] = state[3] - 1
+            triggerSR('r', rsign, right)
     if right == 1:
         stater = state
     else:
         statel = state
-    match state.index(4):
-        case 0:
-            triggerSR('w',tsign,right)
-        case 1:
-            triggerSR('s',tsign,right)
-        case 2:
-            triggerSR('p',psign,right)
-        case 3:
-            triggerSR('y',ysign,right)
-        case 4: 
-            triggerSR('r',rsign,right)
 
-def triggerSR(sr,sign,lr):
-    match sr:
-        case 'w':
-            ser.write(("w"+str(sign)+str(lr)+"\r").encode())
-        case 's':
-            ser.write(("s"+str(sign)+str(lr)+"\r").encode())
-        case 'p':
-            ser.write(("p"+str(sign)+str(lr)+"\r").encode())
-        case 'y':
-            ser.write(("y"+str(sign)+str(lr)+"\r").encode())
-        case 'r':
-            ser.write(("r"+str(sign)+str(lr)+"\r").encode())
 
-stater = [0,0,0,0,0]
-statel = [0,0,0,0,0]
+def triggerSR(sr, sign, lr):
+    if sr == 'w':
+        print("w" + str(sign) + str(lr) + "\r")
+        ser.write(("w" + str(sign) + str(lr) + "\r").encode())
+    elif sr == 's':
+        print("s" + str(sign) + str(lr) + "\r")
+        ser.write(("s" + str(sign) + str(lr) + "\r").encode())
+    elif sr == 'p':
+        print("p" + str(sign) + str(lr) + "\r")
+        ser.write(("p" + str(sign) + str(lr) + "\r").encode())
+    elif sr == 'y':
+        print("y" + str(sign) + str(lr) + "\r")
+        ser.write(("y" + str(sign) + str(lr) + "\r").encode())
+    elif sr == 'r':
+        print("r" + str(sign) + str(lr) + "\r")
+        ser.write(("r" + str(sign) + str(lr) + "\r").encode())
+
+
+stater = [0, 0, 0, 0]
+statel = [0, 0, 0, 0]
 
 ser = serial.Serial(
     port='/dev/ttyACM0',
@@ -103,6 +131,7 @@ ser = serial.Serial(
     timeout=0)
 
 print("connected to: " + ser.portstr)
+
 
 # https://github.com/pyserial/pyserial/issues/216#issuecomment-369414522
 class ReadLine:
@@ -123,17 +152,18 @@ class ReadLine:
             if i >= 0:
                 r = self.buf + data[:i + 1]
                 self.buf[0:] = data[i + 1:]
-                return r
+                return
             else:
                 self.buf.extend(data)
+
 
 rl = ReadLine(ser)
 while True:
     try:
-        line = rl.readline().decode()
-        data = line.strip('\r\n').split(", ")
-        win = windowData(data)
-        actuatorFSM(win[0],win[1],win[2],win[3],win[4],win[5])
+        win = windowData()
+        print(win)
+        actuatorFSM(win[0], win[1], win[2], win[3], 0)
+        actuatorFSM(win[4], win[5], win[6], win[7], 1)
     except KeyboardInterrupt:
         ser.close()
         print("ctrl-c quit")

@@ -67,15 +67,18 @@ unsigned long currTime;
 unsigned long timer;
 unsigned long pollTimer;
 
-//Variable to determine actuator
+//Actuator stuff
 String sdata="";  // Initialised to nothing.
+int motor1, motor2, motor3;
 
 //Function definitions
 void printGyro();
 void printAccel();
 void printMag();
 void printMouse();
-void activateActuator();
+void chooseActuators();
+void activateActuators();
+
 
 void setup() 
 {
@@ -152,20 +155,28 @@ void loop()
     printMag();   // Print "M: mx, my, mz"
     printMouse();
     pollTimer = currTime + PRINT_SPEED;
+
+    //Check actuator input from python
       if (Serial.available()) {
         ch = Serial.read();
         sdata += (char)ch;
-        if (ch=='\r') {  // Command recevied and ready.
+        if (ch=='\r') {  // Actuator input recevied and ready.
           sdata.trim();
           // Process command in sdata.
           Serial.println(sdata);
-          activateActuator(sdata);
+          chooseActuators(sdata, motor1, motor2, motor3);
           sdata = ""; // Clear the string ready for the next actuator string input from python
           }
-   }else{
-    Serial.println("no"); // Print if no actuator string passed from python
-    activateActuator("no");
-   }
+     }else{
+          Serial.println("no"); // Print if no actuator string passed from python
+          chooseActuators("ma", motor1, motor2, motor3);
+          Serial.println(motor1);
+          Serial.print(" ");
+          Serial.print(motor2);
+          Serial.print(" ");
+          Serial.println(motor3);
+          activateActuators(motor1, motor2, motor3);
+     }
   }
   
   //Serial.println();
@@ -291,17 +302,24 @@ void printMouse()
   Serial.print(", ");
 }
 
-void activateActuator(String actuatorseq_string){
+void chooseActuators(String actuatorseq_string, int & motor1, int & motor2, int & motor3){
   if (actuatorseq_string == "ma") {
-    for (uint8_t pwmnum=13; pwmnum < 16; pwmnum++) {
-      pwm.setPWM(pwmnum, 4096, 0);
-      Serial.println(pwmnum);
-      delay(500);
-      pwm.setPWM(pwmnum, 0, 0);
-      }
+    motor1 = 13;
+    motor2 = 14;
+    motor3 = 15;
   }else if (actuatorseq_string == "no") {
-    for (uint8_t pwmnum=1; pwmnum < 16; pwmnum++) {
-      pwm.setPWM(pwmnum, 0, 0);
-      }
+    motor1 = 16;
+    motor2 = 16;
+    motor3 = 16;
+  }else {
+    motor1 = 16;
+    motor2 = 16;
+    motor3 = 16;
   }
+}
+
+void activateActuators(int motor1, int motor2, int motor3){
+  pwm.setPWM(motor1, 0, 0);
+  pwm.setPWM(motor2, 0, 0);
+  pwm.setPWM(motor3, 0, 0);
 }
