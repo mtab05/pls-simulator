@@ -19,13 +19,16 @@ https://github.com/meyadelrahdy/pls-simulator
 #include "SparkFunLSM9DS1.h"
 #include <Adafruit_PWMServoDriver.h>
 
-//////////////////////////
-// Library Init //
-//////////////////////////
+/////////////////////////////
+// Library Initialization //
+///////////////////////////
 // Use the LSM9DS1 class to create an object. [imu] can be
 // named anything, we'll refer to that throught the sketch.
 LSM9DS1 imu1, imu2;
+// Use the PMW3389 class to create an object. [mouse](chip_select_pin) can be
+// named anything, we'll refer to that throught the sketch.
 PMW3389 mouse1(22), mouse2(47);
+// 1 refers to the right sensors and 2 refers to the left sensors
 
 ///////////////////////
 // IMU SPI Setup     //
@@ -67,18 +70,26 @@ unsigned long currTime;
 unsigned long timer;
 unsigned long pollTimer;
 
-//Actuator stuff
-String sdata="";  // Initialised to nothing.
+//Variables for actuators
+String sdata="";  // Initialized to nothing.
+String prevsdata="";
+bool sequence_direction = true; // Initialized to normal actuator sequence
+bool wearable = true; // Initialized to right wearable
 int motor1, motor2, motor3;
 
-//Function definitions
+//Function prototypes
 void printGyro();
-void printAccel();
+void printAccel(); // May not be required for this application
 void printMag();
 void printMouse();
-void chooseActuators();
-void activateActuators();
-
+void processActuatorString();
+void deactivateAllActuators();
+void deactivateLeftActuators();
+void deactivateRightActuators();
+void actuateTranslationSequence();
+void actuatePitchSequence();
+void actuateYawSequence();
+void actuateRollSequence();
 
 void setup() 
 {
@@ -150,32 +161,28 @@ void loop()
       movementflag=1;
     }
 
-    printGyro();  // Print "G: gx, gy, gz"
-    printAccel(); // Print "A: ax, ay, az"
-    printMag();   // Print "M: mx, my, mz"
-    printMouse();
+    printGyro();  // Print "IMURgx, IMURgy, IMURgz, IMULgx, IMULgy, IMULgz"
+    printAccel(); // Print "IMURax, IMURay, IMURaz, IMULax, IMULay, IMULaz"
+    printMag();   // Print "IMURmx, IMURmy, IMURmz, IMULmx, IMULmy, IMULmz"
+    printMouse(); // Print "MouseRx, MouseRy, MouseLx, MouseLy"
     pollTimer = currTime + PRINT_SPEED;
 
-    //Check actuator input from python
+    // Check actuator input from python
+    // If available send Python string for processing
+    // Else print message no string found 
       if (Serial.available()) {
         ch = Serial.read();
         sdata += (char)ch;
         if (ch=='\r') {  // Actuator input recevied and ready.
           sdata.trim();
           // Process command in sdata.
-          Serial.println(sdata);
-          chooseActuators(sdata, motor1, motor2, motor3);
+          processActuatorString(sdata, prevsdata);
+          prevsdata = sdata;
           sdata = ""; // Clear the string ready for the next actuator string input from python
           }
      }else{
-          Serial.println("no"); // Print if no actuator string passed from python
-          chooseActuators("ma", motor1, motor2, motor3);
-          Serial.println(motor1);
-          Serial.print(" ");
-          Serial.print(motor2);
-          Serial.print(" ");
-          Serial.println(motor3);
-          activateActuators(motor1, motor2, motor3);
+          Serial.println("No string input from Python"); // Print if no actuator string passed from python
+          deactivateAllActuators();
      }
   }
   
@@ -302,24 +309,170 @@ void printMouse()
   Serial.print(", ");
 }
 
-void chooseActuators(String actuatorseq_string, int & motor1, int & motor2, int & motor3){
-  if (actuatorseq_string == "ma") {
-    motor1 = 13;
-    motor2 = 14;
-    motor3 = 15;
-  }else if (actuatorseq_string == "no") {
-    motor1 = 16;
-    motor2 = 16;
-    motor3 = 16;
+void processActuatorString(String curr_actuatorseq_string, String prev_actuatorseq_string){
+  // Check if sequence string changed
+  // If true, do nothing and return to loop
+  // Else, process the actuator string
+  if (curr_actuatorseq_string == prev_actuatorseq_string) {
+    Serial.println("No change in sequence");
+    return;
   }else {
-    motor1 = 16;
-    motor2 = 16;
-    motor3 = 16;
+    // Check if string was 'ok'
+    // Signifies that all sensor parameters are within bounds
+    //If true then deactivate all actuators and return to loop
+    //Else continue processing string
+    if(curr_actuatorseq_string == "ok"){
+      Serial.println("No bounds exceeded");
+      deactivateAllActuators();
+      return;
+    }
+    
+    // Check if string points to left or right wearable
+    // "r" = right wearable = true or "l" = left wearable = false
+    if(curr_actuatorseq_string[2] == 'r'){
+      wearable = true; //for right wearable
+      deactivateRightActuators();
+    }else if(curr_actuatorseq_string[2] == 'l'){
+      wearable = false; //for left wearable
+      deactivateLeftActuators();
+    }else {
+      Serial.println("String error[2]");
+      deactivateAllActuators();
+      return;
+    }
+
+    // Check if string points to normal or reverse actuator sequence direction
+    // "1" = normal sequence direction = true or "0" = reverse sequence direction = false
+    if(curr_actuatorseq_string[1] == '1'){
+      sequence_direction = true; //for normal actuator sequence
+    }else if(curr_actuatorseq_string[1] == '0'){
+      sequence_direction = false; //for reverse actuator sequence
+    }else {
+      Serial.println("String error[1]");
+      deactivateAllActuators();
+      return;
+    }
+
+    //Check which actuator sequence string points to
+    // "w" is for translation actuation sequence
+    // "p" is for pitch actuation sequence
+    // "y" is for yaw actuation sequence
+    // "r" is for roll actuation sequence
+    if(curr_actuatorseq_string[0] == 'w'){
+      actuateTranslationSequence(sequence_direction, wearable);
+    }else if(curr_actuatorseq_string[0] == 'p'){
+      actuatePitchSequence(sequence_direction, wearable);
+    }else if(curr_actuatorseq_string[0] == 'y'){
+      actuateYawSequence(sequence_direction, wearable);
+    }else if(curr_actuatorseq_string[0] == 'r'){
+      actuateRollSequence(sequence_direction, wearable);
+    }else{
+      Serial.println("String error[0]");
+      deactivateAllActuators();
+      return;
+    }
+
+    Serial.println(curr_actuatorseq_string);
   }
 }
 
-void activateActuators(int motor1, int motor2, int motor3){
-  pwm.setPWM(motor1, 0, 0);
-  pwm.setPWM(motor2, 0, 0);
-  pwm.setPWM(motor3, 0, 0);
+void deactivateAllActuators(){
+  for (uint8_t pwmnum=0; pwmnum < 16; pwmnum++) {
+    pwm.setPWM(pwmnum, 0, 0);
+    }
+}
+
+void deactivateLeftActuators(){
+  for (uint8_t pwmnum=8; pwmnum < 16; pwmnum++) {
+    pwm.setPWM(pwmnum, 0, 0);
+    }
+}
+
+void deactivateRightActuators(){
+  for (uint8_t pwmnum=0; pwmnum < 8; pwmnum++) {
+    pwm.setPWM(pwmnum, 0, 0);
+    }
+}
+
+void actuateTranslationSequence(bool dir, bool hand){
+  uint8_t motor1, motor2, motor3, motor4, motor5, motor6;
+  if (dir==true && hand==false){
+    motor1 = 0; motor2 = 1; motor3 = 2;
+    motor4 = 4; motor5 = 5; motor6 = 6;
+  }else if(dir==true && hand==true){
+    motor1 = 8; motor2 = 9; motor3 = 10;
+    motor4 = 12; motor5 = 13; motor6 = 14;
+  }else if(dir==false && hand==true){
+    motor1 = 2; motor2 = 1; motor3 = 0;
+    motor4 = 6; motor5 = 5; motor6 = 4;
+  }else if(dir==false && hand==true){
+    motor1 = 10; motor2 = 9; motor3 = 8;
+    motor4 = 14; motor5 = 13; motor6 = 12;
+  }
+  
+  pwm.setPWM(motor1, 4096, 0);
+  pwm.setPWM(motor4, 4096, 0);
+  
+  pwm.setPWM(motor2, 4096, 0);
+  pwm.setPWM(motor5, 4096, 0);
+  
+  pwm.setPWM(motor3, 4096, 0);
+  pwm.setPWM(motor6, 4096, 0);
+}
+
+void actuatePitchSequence(bool dir, bool hand){
+  uint8_t motor1, motor2, motor3;
+  if (dir==true && hand==false){
+    motor1 = 0; motor2 = 1; motor3 = 2;
+  }else if(dir==true && hand==true){
+    motor1 = 8; motor2 = 9; motor3 = 10;
+  }else if(dir==false && hand==true){
+    motor1 = 2; motor2 = 1; motor3 = 0;
+  }else if(dir==false && hand==true){
+    motor1 = 10; motor2 = 9; motor3 = 8;
+  }
+  
+  pwm.setPWM(motor1, 4096, 0);
+  
+  pwm.setPWM(motor2, 4096, 0);
+  
+  pwm.setPWM(motor3, 4096, 0);
+}
+
+void actuateYawSequence(bool dir, bool hand){
+  uint8_t motor1, motor2, motor3;
+  if (dir==true && hand==false){
+    motor1 = 0; motor2 = 1; motor3 = 2;
+  }else if(dir==true && hand==true){
+    motor1 = 8; motor2 = 9; motor3 = 10;
+  }else if(dir==false && hand==true){
+    motor1 = 2; motor2 = 1; motor3 = 0;
+  }else if(dir==false && hand==true){
+    motor1 = 10; motor2 = 9; motor3 = 8;
+  }
+  
+  pwm.setPWM(motor1, 4096, 0);
+  
+  pwm.setPWM(motor2, 4096, 0);
+  
+  pwm.setPWM(motor3, 4096, 0);
+}
+
+void actuateRollSequence(bool dir, bool hand){
+  uint8_t motor1, motor2, motor3;
+  if (dir==true && hand==false){
+    motor1 = 0; motor2 = 1; motor3 = 2;
+  }else if(dir==true && hand==true){
+    motor1 = 8; motor2 = 9; motor3 = 10;
+  }else if(dir==false && hand==true){
+    motor1 = 2; motor2 = 1; motor3 = 0;
+  }else if(dir==false && hand==true){
+    motor1 = 10; motor2 = 9; motor3 = 8;
+  }
+  
+  pwm.setPWM(motor1, 4096, 0);
+  
+  pwm.setPWM(motor2, 4096, 0);
+  
+  pwm.setPWM(motor3, 4096, 0);
 }

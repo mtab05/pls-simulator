@@ -80,8 +80,9 @@ def actuatorFSM(trans, pitch, yaw, roll, right):
     try:
         sr = state.index(4)
     except:
-        print('All good!')
-        print(state)
+        ser.write("ok\r".encode())
+        # print('All good!')
+        # print(state)
     else:
         if sr == 0:
             state[0] = state[0] - 1
