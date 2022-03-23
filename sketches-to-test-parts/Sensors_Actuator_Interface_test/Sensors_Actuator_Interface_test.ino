@@ -409,7 +409,9 @@ void actuateTranslationSequence(bool dir, bool hand){
     motor1 = 10; motor2 = 9; motor3 = 8;
     motor4 = 14; motor5 = 13; motor6 = 12;
   }
-  
+  //Enhancement: implement delay without delay();
+  //https://forum.arduino.cc/t/demonstration-code-for-several-things-at-the-same-time/217158
+  https://forum.arduino.cc/t/blink-two-leds-independent-no-delay/75387
   pwm.setPWM(motor1, 4096, 0);
   pwm.setPWM(motor4, 4096, 0);
   
@@ -426,7 +428,7 @@ void actuatePitchSequence(bool dir, bool hand){
     motor1 = 0; motor2 = 1; motor3 = 2;
   }else if(dir==true && hand==true){
     motor1 = 8; motor2 = 9; motor3 = 10;
-  }else if(dir==false && hand==true){
+  }else if(dir==false && hand==false){
     motor1 = 2; motor2 = 1; motor3 = 0;
   }else if(dir==false && hand==true){
     motor1 = 10; motor2 = 9; motor3 = 8;
@@ -445,7 +447,7 @@ void actuateYawSequence(bool dir, bool hand){
     motor1 = 0; motor2 = 1; motor3 = 2;
   }else if(dir==true && hand==true){
     motor1 = 8; motor2 = 9; motor3 = 10;
-  }else if(dir==false && hand==true){
+  }else if(dir==false && hand==false){
     motor1 = 2; motor2 = 1; motor3 = 0;
   }else if(dir==false && hand==true){
     motor1 = 10; motor2 = 9; motor3 = 8;
@@ -459,15 +461,15 @@ void actuateYawSequence(bool dir, bool hand){
 }
 
 void actuateRollSequence(bool dir, bool hand){
-  uint8_t motor1, motor2, motor3;
+  uint8_t motor1, motor2, motor3, motor4;
   if (dir==true && hand==false){
-    motor1 = 0; motor2 = 1; motor3 = 2;
+    motor1 = 0; motor2 = 1; motor3 = 2; motor4 = 3;
   }else if(dir==true && hand==true){
-    motor1 = 8; motor2 = 9; motor3 = 10;
+    motor1 = 8; motor2 = 9; motor3 = 10; motor4 = 11;
+  }else if(dir==false && hand==false){
+    motor1 = 3; motor2 = 2; motor3 = 1; motor4 = 0;
   }else if(dir==false && hand==true){
-    motor1 = 2; motor2 = 1; motor3 = 0;
-  }else if(dir==false && hand==true){
-    motor1 = 10; motor2 = 9; motor3 = 8;
+    motor1 = 11; motor2 = 10; motor3 = 9; motor4 = 8;
   }
   
   pwm.setPWM(motor1, 4096, 0);
@@ -475,4 +477,6 @@ void actuateRollSequence(bool dir, bool hand){
   pwm.setPWM(motor2, 4096, 0);
   
   pwm.setPWM(motor3, 4096, 0);
+
+  pwm.setPWM(motor4, 4096, 0);
 }
